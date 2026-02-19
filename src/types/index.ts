@@ -1,5 +1,5 @@
 export interface Matatu {
-  id: string;
+  _id: string;
   plateNumber: string;
   capacity: number;
   status: "active" | "maintenance" | "inactive";
@@ -10,7 +10,7 @@ export interface Matatu {
 }
 
 export interface Route {
-  id: string;
+  _id: string;
   name: string;
   from: string;
   to: string;
@@ -20,7 +20,7 @@ export interface Route {
 }
 
 export interface Trip {
-  id: string;
+  _id: string;
   matatuId: string;
   routeId: string;
   driver: string;
@@ -32,7 +32,7 @@ export interface Trip {
 }
 
 export interface Alert {
-  id: string;
+  _id: string;
   matatuId: string;
   type: "overloading" | "off-route" | "safety" | "speed" | "maintenance";
   severity: "low" | "medium" | "high" | "critical";

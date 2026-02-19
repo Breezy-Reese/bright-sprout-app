@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Plus, CheckCircle, Clock, Eye } from "lucide-react";
-import { alerts as initialAlerts, matatus } from "@/data/mockData";
 import { AppLayout } from "@/components/AppLayout";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import type { Alert } from "@/types";
 
 const severityColor: Record<string, string> = {
@@ -26,11 +27,22 @@ const statusIcon: Record<string, React.ReactNode> = {
 };
 
 const Alerts = () => {
-  const [data] = useState<Alert[]>(initialAlerts);
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: api.alerts.getAll,
+  });
+
+  const { data: matatus = [], isLoading: matatusLoading } = useQuery({
+    queryKey: ['matatus'],
+    queryFn: api.matatus.getAll,
+  });
+
+  const isLoading = alertsLoading || matatusLoading;
+
   const [open, setOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const filtered = statusFilter === "all" ? data : data.filter(a => a.status === statusFilter);
+  const filtered = statusFilter === "all" ? alerts : alerts.filter(a => a.status === statusFilter);
 
   return (
     <AppLayout>

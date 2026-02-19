@@ -1,10 +1,36 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { routes, matatus } from "@/data/mockData";
 import { AppLayout } from "@/components/AppLayout";
 import { Bus, MapPin } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const Routes = () => {
+  const { data: routes = [], isLoading: routesLoading } = useQuery({
+    queryKey: ['routes'],
+    queryFn: api.routes.getAll,
+  });
+
+  const { data: matatus = [], isLoading: matatusLoading } = useQuery({
+    queryKey: ['matatus'],
+    queryFn: api.matatus.getAll,
+  });
+
+  const isLoading = routesLoading || matatusLoading;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Route Management</h1>
+            <p className="text-muted-foreground text-sm mt-1">Loading...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -15,9 +41,9 @@ const Routes = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {routes.map((route) => {
-            const assigned = matatus.filter(m => route.assignedMatatus.includes(m.id));
+            const assigned = matatus.filter(m => route.assignedMatatus.includes(m._id));
             return (
-              <Card key={route.id} className="border-0 shadow-md">
+              <Card key={route._id} className="border-0 shadow-md">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{route.name}</CardTitle>
@@ -37,7 +63,7 @@ const Routes = () => {
                   {assigned.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {assigned.map(m => (
-                        <div key={m.id} className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded-md">
+                        <div key={m._id} className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded-md">
                           <Bus className="h-3 w-3" />
                           {m.plateNumber}
                         </div>

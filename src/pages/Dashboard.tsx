@@ -1,15 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Bus, Route, ClipboardList, AlertTriangle } from "lucide-react";
-import { matatus, routes, trips, alerts } from "@/data/mockData";
 import { AppLayout } from "@/components/AppLayout";
-
-const statCards = [
-  { title: "Total Matatus", value: matatus.length, icon: Bus, color: "text-primary" },
-  { title: "Active Routes", value: routes.length, icon: Route, color: "text-accent" },
-  { title: "Today's Trips", value: trips.filter(t => t.date === "2026-02-12").length, icon: ClipboardList, color: "text-success" },
-  { title: "Active Alerts", value: alerts.filter(a => a.status !== "resolved").length, icon: AlertTriangle, color: "text-destructive" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import type { Matatu, Route as RouteType, Trip, Alert } from "@/types";
 
 const severityColor: Record<string, string> = {
   low: "bg-muted text-muted-foreground",
@@ -19,8 +14,51 @@ const severityColor: Record<string, string> = {
 };
 
 const Dashboard = () => {
+  const { data: matatus = [], isLoading: matatusLoading } = useQuery({
+    queryKey: ['matatus'],
+    queryFn: api.matatus.getAll,
+  });
+
+  const { data: routes = [], isLoading: routesLoading } = useQuery({
+    queryKey: ['routes'],
+    queryFn: api.routes.getAll,
+  });
+
+  const { data: trips = [], isLoading: tripsLoading } = useQuery({
+    queryKey: ['trips'],
+    queryFn: api.trips.getAll,
+  });
+
+  const { data: alerts = [], isLoading: alertsLoading } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: api.alerts.getAll,
+  });
+
+  const isLoading = matatusLoading || routesLoading || tripsLoading || alertsLoading;
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground text-sm mt-1">Loading...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const statCards = [
+    { title: "Total Matatus", value: matatus.length, icon: Bus, color: "text-primary" },
+    { title: "Active Routes", value: routes.length, icon: Route, color: "text-accent" },
+    { title: "Today's Trips", value: trips.filter(t => t.date === today).length, icon: ClipboardList, color: "text-success" },
+    { title: "Active Alerts", value: alerts.filter(a => a.status !== "resolved").length, icon: AlertTriangle, color: "text-destructive" },
+  ];
+
   const recentAlerts = alerts.slice(0, 4);
-  const recentTrips = trips.filter(t => t.date === "2026-02-12");
+  const recentTrips = trips.filter(t => t.date === today);
 
   return (
     <AppLayout>
@@ -53,9 +91,9 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {recentAlerts.map((alert) => {
-                const mat = matatus.find(m => m.id === alert.matatuId);
+                const mat = matatus.find(m => m._id === alert.matatuId);
                 return (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
+                  <div key={alert._id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                     <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{alert.message}</p>
@@ -74,10 +112,10 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {recentTrips.map((trip) => {
-                const mat = matatus.find(m => m.id === trip.matatuId);
-                const route = routes.find(r => r.id === trip.routeId);
+                const mat = matatus.find(m => m._id === trip.matatuId);
+                const route = routes.find(r => r._id === trip.routeId);
                 return (
-                  <div key={trip.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div key={trip._id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                     <Bus className="h-4 w-4 text-primary shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{mat?.plateNumber} — {route?.name}</p>

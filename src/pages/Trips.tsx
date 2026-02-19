@@ -7,10 +7,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { trips, matatus, routes } from "@/data/mockData";
 import { AppLayout } from "@/components/AppLayout";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const Trips = () => {
+  const { data: trips = [], isLoading: tripsLoading } = useQuery({
+    queryKey: ['trips'],
+    queryFn: api.trips.getAll,
+  });
+
+  const { data: matatus = [], isLoading: matatusLoading } = useQuery({
+    queryKey: ['matatus'],
+    queryFn: api.matatus.getAll,
+  });
+
+  const { data: routes = [], isLoading: routesLoading } = useQuery({
+    queryKey: ['routes'],
+    queryFn: api.routes.getAll,
+  });
+
+  const isLoading = tripsLoading || matatusLoading || routesLoading;
+
   const [open, setOpen] = useState(false);
 
   return (

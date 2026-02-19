@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
-import { matatus as initialMatatus, routes } from "@/data/mockData";
 import { AppLayout } from "@/components/AppLayout";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import type { Matatu } from "@/types";
 
 const statusColor: Record<string, string> = {
@@ -19,11 +20,22 @@ const statusColor: Record<string, string> = {
 };
 
 const Matatus = () => {
-  const [data] = useState<Matatu[]>(initialMatatus);
+  const { data: matatus = [], isLoading: matatusLoading } = useQuery({
+    queryKey: ['matatus'],
+    queryFn: api.matatus.getAll,
+  });
+
+  const { data: routes = [], isLoading: routesLoading } = useQuery({
+    queryKey: ['routes'],
+    queryFn: api.routes.getAll,
+  });
+
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
-  const filtered = data.filter(m =>
+  const isLoading = matatusLoading || routesLoading;
+
+  const filtered = matatus.filter(m =>
     m.plateNumber.toLowerCase().includes(search.toLowerCase()) ||
     m.owner.toLowerCase().includes(search.toLowerCase())
   );
