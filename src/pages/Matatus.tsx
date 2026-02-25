@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Matatu } from "@/types";
 
@@ -20,18 +20,64 @@ const statusColor: Record<string, string> = {
 };
 
 const Matatus = () => {
+  const queryClient = useQueryClient();
+
   const { data: matatus = [], isLoading: matatusLoading } = useQuery({
     queryKey: ['matatus'],
     queryFn: api.matatus.getAll,
   });
+  // note: api.getAll normalizes id -> id
+
 
   const { data: routes = [], isLoading: routesLoading } = useQuery({
     queryKey: ['routes'],
     queryFn: api.routes.getAll,
   });
 
+  // the mutation hook caused a runtime exception in this build, so
+  // we'll handle the POST manually and invalidate queries ourselves.
+  const [creating, setCreating] = useState(false);
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      await api.matatus.create({
+        plateNumber,
+        model,
+        year: Number(year),
+        capacity: Number(capacity),
+        owner,
+        assignedRouteId,
+      });
+      await queryClient.invalidateQueries(['matatus']);
+      setSearch("");
+      setOpen(false);
+      resetForm();
+    } catch (err) {
+      console.error('failed to create matatu', err);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+
+  // form state
+  const [plateNumber, setPlateNumber] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState<number | ''>("");
+  const [capacity, setCapacity] = useState<number | ''>("");
+  const [owner, setOwner] = useState("");
+  const [assignedRouteId, setAssignedRouteId] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setPlateNumber("");
+    setModel("");
+    setYear("");
+    setCapacity("");
+    setOwner("");
+    setAssignedRouteId(null);
+  };
 
   const isLoading = matatusLoading || routesLoading;
 
@@ -59,31 +105,56 @@ const Matatus = () => {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label>Plate Number</Label>
-                  <Input placeholder="e.g. KCA 123A" />
+                  <Input
+                    placeholder="e.g. KCA 123A"
+                    value={plateNumber}
+                    onChange={e => setPlateNumber(e.target.value)}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Model</Label>
-                    <Input placeholder="e.g. Toyota HiAce" />
+                    <Input
+                      placeholder="e.g. Toyota HiAce"
+                      value={model}
+                      onChange={e => setModel(e.target.value)}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Year</Label>
-                    <Input type="number" placeholder="2024" />
+                    <Input
+                      type="number"
+                      placeholder="2024"
+                      value={year}
+                      onChange={e => setYear(Number(e.target.value) || "")}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label>Capacity</Label>
-                    <Input type="number" placeholder="33" />
+                    <Input
+                      type="number"
+                      placeholder="33"
+                      value={capacity}
+                      onChange={e => setCapacity(Number(e.target.value) || "")}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label>Owner</Label>
-                    <Input placeholder="Owner name" />
+                    <Input
+                      placeholder="Owner name"
+                      value={owner}
+                      onChange={e => setOwner(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="grid gap-2">
                   <Label>Assigned Route</Label>
-                  <Select>
+                  <Select
+                    value={assignedRouteId || ""}
+                    onValueChange={val => setAssignedRouteId(val || null)}
+                  >
                     <SelectTrigger><SelectValue placeholder="Select route" /></SelectTrigger>
                     <SelectContent>
                       {routes.map(r => (
@@ -92,7 +163,13 @@ const Matatus = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button className="mt-2" onClick={() => setOpen(false)}>Register Matatu</Button>
+                <Button
+                  className="mt-2"
+                  onClick={handleCreate}
+                  disabled={creating}
+                >
+                  {creating ? 'Registering…' : 'Register Matatu'}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
