@@ -100,6 +100,19 @@ export const api = {
         return [];
       }
     },
+    create: async (trip: Omit<Trip, '_id'>): Promise<Trip> => {
+      const response = await fetch(`${API_BASE_URL}/trips`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trip),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error('Failed to create trip: ' + text);
+      }
+      const data = await response.json();
+      return { ...data, id: data.id || data._id };
+    },
   },
 
   alerts: {
