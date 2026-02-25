@@ -32,6 +32,13 @@ const Trips = () => {
   const isLoading = tripsLoading || matatusLoading || routesLoading;
 
   const [open, setOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
+  const [currentTrip, setCurrentTrip] = useState<any>(null);
+
+  // payment form state
+  const [payPhone, setPayPhone] = useState("");
+  const [payAmount, setPayAmount] = useState<number | ''>("");
+  const [payLoading, setPayLoading] = useState(false);
 
   // form state
   const [selectedMatatu, setSelectedMatatu] = useState<string | null>(null);
@@ -156,6 +163,38 @@ const Trips = () => {
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* payment dialog */}
+          <Dialog open={payOpen} onOpenChange={setPayOpen}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Pay Fare</DialogTitle></DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>Phone Number</Label>
+                  <Input placeholder="2547XXXXXXXX" value={payPhone} onChange={e => setPayPhone(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Amount</Label>
+                  <Input type="number" placeholder="KES" value={payAmount} onChange={e => setPayAmount(Number(e.target.value) || "")} />
+                </div>
+                <Button className="mt-2" onClick={async () => {
+                    setPayLoading(true);
+                    try {
+                      await api.payments.initiate({ tripId: currentTrip.id, phone: payPhone, amount: Number(payAmount) });
+                      setPayOpen(false);
+                      setPayPhone("");
+                      setPayAmount("");
+                    } catch (err) {
+                      console.error('payment error', err);
+                    } finally {
+                      setPayLoading(false);
+                    }
+                  }} disabled={payLoading}>
+                  {payLoading ? 'Processing…' : 'Send STK Push'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Card className="border-0 shadow-md">
@@ -170,6 +209,7 @@ const Trips = () => {
                   <TableHead>Conductor</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Passengers</TableHead>
+                  <TableHead>Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -185,6 +225,14 @@ const Trips = () => {
                       <TableCell>{trip.conductor}</TableCell>
                       <TableCell>{trip.departureTime}–{trip.arrivalTime}</TableCell>
                       <TableCell>{trip.passengerCount}</TableCell>
+                      <TableCell>
+                        <Button size="sm" variant="outline" onClick={() => {
+                          setCurrentTrip(trip);
+                          setPayOpen(true);
+                        }}>
+                          Pay Fare
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}

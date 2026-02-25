@@ -26,6 +26,7 @@ app.use('/api/matatus', require('./routes/matatus'));
 app.use('/api/routes', require('./routes/routes'));
 app.use('/api/trips', require('./routes/trips'));
 app.use('/api/alerts', require('./routes/alerts'));
+app.use('/api/payments', require('./routes/payments'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -33,7 +34,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

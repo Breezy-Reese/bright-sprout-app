@@ -129,5 +129,19 @@ export const api = {
       }
     },
   },
+  payments: {
+    initiate: async (body: { tripId: string; phone: string; amount: number }) => {
+      const response = await fetch(`${API_BASE_URL}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error('Failed to initiate payment: ' + text);
+      }
+      return response.json();
+    },
+  },
 
 };
