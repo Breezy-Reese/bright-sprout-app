@@ -22,8 +22,8 @@ async function getMpesaToken() {
 const initiatePayment = async (req, res) => {
   console.log('initiatePayment body', req.body);
 
-  // ensure core env vars (APP_BASE_URL is optional – fall back to localhost)
-  const required = ['MPESA_CONSUMER_KEY','MPESA_CONSUMER_SECRET','MPESA_SHORTCODE','MPESA_PASSKEY'];
+  // ensure core env vars
+  const required = ['MPESA_CONSUMER_KEY', 'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY'];
   for (const name of required) {
     if (!process.env[name]) {
       const msg = `missing environment variable ${name}`;
@@ -34,21 +34,15 @@ const initiatePayment = async (req, res) => {
 
   try {
     const { tripId, phone, amount } = req.body;
-    // basic validation
+
     if (!tripId || !phone || !amount) {
       return res.status(400).json({ message: 'tripId, phone and amount are required' });
     }
-    // create a payment record
-    let payment;
-    try {
-      payment = await Payment.create({ tripId, phone, amount });
-    } catch (err) {
-      console.error('payment create error', err);
-      throw err;
-    }
 
+    // 1. Get M-Pesa token first
     const token = await getMpesaToken();
-    console.log('mpesa token', token && token.slice(0,10));
+    console.log('mpesa token', token && token.slice(0, 10));
+
     const shortcode = process.env.MPESA_SHORTCODE;
     const passkey = process.env.MPESA_PASSKEY;
     const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
@@ -69,8 +63,9 @@ const initiatePayment = async (req, res) => {
       TransactionDesc: 'Fare payment',
     };
     console.log('using callback URL', `${baseUrl}/api/payments/callback`);
-
     console.log('stk payload', payload);
+
+    // 2. Send STK push
     const resp = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
       method: 'POST',
       headers: {
@@ -82,11 +77,25 @@ const initiatePayment = async (req, res) => {
     const result = await resp.json();
     console.log('stk push response', result);
 
-    // store response data if needed
-    payment.transactionId = result.CheckoutRequestID || payment.transactionId;
-    await payment.save();
+    if (result.ResponseCode !== '0') {
+      return res.status(502).json({ message: 'STK push failed', result });
+    }
 
-    res.status(201).json({ payment, result });
+    // 3. Save payment record to DB after STK push succeeds
+    try {
+      await Payment.create({
+        tripId,
+        phone,
+        amount,
+        transactionId: result.CheckoutRequestID,
+        status: 'pending',
+      });
+    } catch (dbErr) {
+      // STK push already went through — log the DB error but don't fail the request
+      console.error('DB save failed but STK push succeeded:', dbErr.message);
+    }
+
+    res.status(201).json({ result });
   } catch (error) {
     console.error('initiatePayment error', error);
     res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
@@ -99,8 +108,6 @@ const initiatePayment = async (req, res) => {
 const mpesaCallback = async (req, res) => {
   try {
     const body = req.body;
-    // body contains the result of the STK push
-    // you would parse the JSON structure and update the payment record accordingly
     const checkoutId = body.Body.stkCallback.CheckoutRequestID;
     const statusCode = body.Body.stkCallback.ResultCode;
 
@@ -110,7 +117,6 @@ const mpesaCallback = async (req, res) => {
       await payment.save();
     }
 
-    // respond to safaricom with success
     res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
   } catch (err) {
     console.error('callback error', err);
